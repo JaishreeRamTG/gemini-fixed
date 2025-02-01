@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek API</title>
+</head>
+<body>
+    <h1>Query the DeepSeek Model</h1>
+    <form method="POST">
+        <label for="query">Enter your query:</label><br>
+        <input type="text" id="query" name="query" required><br><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    {% if query %}
+    <h2>Query:</h2>
+    <p>{{ query }}</p>
+
+    <h2>Response:</h2>
+    <pre>{{ response }}</pre>
+    {% endif %}
+</body>
+</html>
