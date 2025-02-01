@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/chatgpt.py",
+      "src": "/api/chatgpt.py",
       "use": "@vercel/python"
     }
   ],
