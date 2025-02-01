@@ -16,7 +16,7 @@
       "dest": "/api/gemini.py"
     },
     {
-      "src": "/api/webhook",
+      "src": "/webhook",
       "dest": "/api/bot.py"
     }
   ]
