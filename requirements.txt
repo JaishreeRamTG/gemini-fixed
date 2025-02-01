@@ -1,10 +1,7 @@
-flask
-fastapi
-gunicorn
-requests
-uvicorn
-pymongo
-python-dotenv
-dnspython
-httpx
-pydantic
+Flask==2.2.3
+psycopg2==2.9.3
+requests==2.28.1
+python-dotenv==1.0.0
+dnspython==2.2.1
+httpx==0.24.0
+pydantic==1.10.7
