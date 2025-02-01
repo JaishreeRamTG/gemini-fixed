@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/gemini.py",
+      "src": "api/chatgpt.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/pythonbotz",
-      "dest": "/api/gemini.py"
+      "dest": "/api/chatgpt.py"
     }
   ]
 }
