@@ -21,14 +21,12 @@ pending_responses = {}
 def generate_response(user_id, message):
     """Fetch response from Gemini API asynchronously and store it in pending_responses."""
     try:
-        # Fetch the user's chat history
         history = chat_history.get(user_id, [])
 
-        # Prepare the payload with chat history
-        contents = [{"role": "user", "parts": [{"text": PROMPT}]}]  # Add the initial prompt
+        contents = [{"role": "user", "parts": [{"text": PROMPT}]}]  
         for entry in history:
             contents.append({"role": entry["role"], "parts": [{"text": entry["text"]}]})
-        contents.append({"role": "user", "parts": [{"text": message}]})  # Add the latest message
+        contents.append({"role": "user", "parts": [{"text": message}]})
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
         payload = {"contents": contents}
@@ -42,14 +40,12 @@ def generate_response(user_id, message):
         if "candidates" in data and data["candidates"]:
             reply = data["candidates"][0]["content"]["parts"][0]["text"]
 
-            # Update chat history
             chat_history[user_id] = history + [
                 {"role": "user", "parts": [{"text": message}]},
                 {"role": "model", "parts": [{"text": reply}]},
             ]
 
-            # Store the response temporarily
-            pending_responses[user_id] = reply
+            pending_responses[user_id] = reply  # Store final response
         else:
             pending_responses[user_id] = "Error: Unable to fetch response at the moment."
     except Exception:
@@ -60,56 +56,25 @@ def process_chat_request(user_id, message):
     thread = threading.Thread(target=generate_response, args=(user_id, message))
     thread.start()
 
-# 🔹 GET request: Uses /pythonbotz and ?msg=
+# 🔹 GET request: Initiate conversation
 @app.route("/pythonbotz", methods=["GET"])
 def chat():
-    user_id = request.args.get("user_id")  # Add a user_id parameter to track chat history
-    message = request.args.get("msg")  # Changed from 'message' to 'msg'
+    user_id = request.args.get("user_id")
+    message = request.args.get("msg")
     if not message or not user_id:
         return jsonify({"error": "user_id and msg parameters are required"}), 400
 
-    # Start processing the chat request in a separate thread
     process_chat_request(user_id, message)
 
     return jsonify({"reply": "Fetching response...", "Owner": "@PythonBotz"})
 
-# 🔹 GET response check: Users can poll for the actual response
+# 🔹 Polling endpoint: Check for the actual response
 @app.route("/pythonbotz/check", methods=["GET"])
 def check_response():
     user_id = request.args.get("user_id")
     if not user_id:
         return jsonify({"error": "user_id parameter is required"}), 400
 
-    # Check if the response is ready
-    if user_id in pending_responses:
-        reply = pending_responses.pop(user_id)  # Remove after fetching
-        return jsonify({"reply": reply, "Owner": "@PythonBotz"})
-    else:
-        return jsonify({"reply": "Fetching response...", "Owner": "@PythonBotz"})
-
-# 🔹 POST request: Uses JSON body with "msg"
-@app.route("/pythonbotz", methods=["POST"])
-def chat_post():
-    data = request.get_json()
-    user_id = data.get("user_id")  # Add a user_id parameter to track chat history
-    message = data.get("msg")  # Changed from 'message' to 'msg'
-    if not message or not user_id:
-        return jsonify({"error": "user_id and msg are required"}), 400
-
-    # Start processing the chat request in a separate thread
-    process_chat_request(user_id, message)
-
-    return jsonify({"reply": "Fetching response...", "Owner": "@PythonBotz"})
-
-# 🔹 POST response check: Users can poll for the actual response
-@app.route("/pythonbotz/check", methods=["POST"])
-def check_response_post():
-    data = request.get_json()
-    user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-
-    # Check if the response is ready
     if user_id in pending_responses:
         reply = pending_responses.pop(user_id)  # Remove after fetching
         return jsonify({"reply": reply, "Owner": "@PythonBotz"})
