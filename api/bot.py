@@ -4,7 +4,7 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOKEN = "7682969410:AAEx5k0-bOamrR7Q-_32sBPAUlmMssbicL0"
 API_URL = "https://gemini-fixed.vercel.app/pythonbotz?msg={}"
 
 app = Flask(__name__)
