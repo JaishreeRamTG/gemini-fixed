@@ -43,10 +43,17 @@ def generate_response(user_id, message):
             return f"Error: API request failed with status {response.status_code}. Please try again later."
 
         data = response.json()
+        print("API Response:", data)  # Debugging: Print the API response
 
-        # Extract response
+        # ✅ Fix: Properly extract AI response
         if "candidates" in data and data["candidates"]:
-            reply = data["candidates"][0]["content"]["parts"][0]["text"]
+            candidate = data["candidates"][0]  # Get the first candidate
+            
+            # Ensure structure is valid
+            if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
+                reply = candidate["content"]["parts"][0].get("text", "Error: No valid response found.")
+            else:
+                return "Error: Response format is unexpected."
 
             # Update chat history
             chat_history[user_id] = history + [
