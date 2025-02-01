@@ -1,9 +1,10 @@
 import os
 import requests
 import random
+import json
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from pymongo import MongoClient
+import psycopg2
 
 # Load environment variables
 load_dotenv()
@@ -12,12 +13,7 @@ app = Flask(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 PROMPT = os.getenv("PROMPT")  # Fetching the prompt from .env
-MONGO_URI = "mongodb+srv://Outlawbots:Zoro@cluster0.huekk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-# Connect to MongoDB
-client = MongoClient(MONGO_URI)
-db = client["ChatBotDB"]
-chat_collection = db["chats"]
+DATABASE_URL = os.getenv("DATABASE_URL")  # PostgreSQL database URL from .env
 
 # List of random funny error messages
 FUNNY_ERROR_MESSAGES = [
@@ -31,11 +27,38 @@ FUNNY_ERROR_MESSAGES = [
     "@PythonBotz mujhe bol rha tumse bat nahh karu !!"
 ]
 
+# Function to connect to PostgreSQL
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
+# Function to fetch chat history from PostgreSQL
+def get_chat_history(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT history FROM chats WHERE user_id = %s", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return json.loads(result[0]) if result else []
+
+# Function to update chat history in PostgreSQL
+def update_chat_history(user_id, history, last_message):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO chats (user_id, history, last_message)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id)
+        DO UPDATE SET history = %s, last_message = %s
+    """, (user_id, json.dumps(history), last_message, json.dumps(history), last_message))
+    conn.commit()
+    conn.close()
+
+# Function to generate a response from Gemini API
 def generate_response(user_id, message):
     try:
-        # Fetch chat history from MongoDB
-        user_data = chat_collection.find_one({"user_id": user_id})
-        history = user_data.get("history", []) if user_data else []
+        # Fetch chat history from PostgreSQL
+        history = get_chat_history(user_id)
 
         # Prepare the payload with chat history
         contents = [{"role": "user", "parts": [{"text": PROMPT}]}]  # Initial prompt
@@ -54,17 +77,12 @@ def generate_response(user_id, message):
         if "candidates" in data and data["candidates"]:
             reply = data["candidates"][0]["content"]["parts"][0]["text"]
 
-            # Update chat history in MongoDB
+            # Update chat history in PostgreSQL
             new_history = history + [
                 {"role": "user", "text": message},
                 {"role": "model", "text": reply},
             ]
-
-            chat_collection.update_one(
-                {"user_id": user_id},
-                {"$set": {"history": new_history[-10:], "last_message": message}},  # Store only last 10 messages
-                upsert=True
-            )
+            update_chat_history(user_id, new_history[-10:], message)  # Store only last 10 messages
             return reply
         else:
             return random.choice(FUNNY_ERROR_MESSAGES)  # Return a random funny message if response is invalid
@@ -101,9 +119,8 @@ def get_last_message():
     if not user_id:
         return jsonify({"error": "user_id is required"}), 400
 
-    user_data = chat_collection.find_one({"user_id": user_id})
-    last_message = user_data.get("last_message", "No messages found") if user_data else "No messages found"
-
+    history = get_chat_history(user_id)
+    last_message = history[-1]["text"] if history else "No messages found"
     return jsonify({"user_id": user_id, "last_message": last_message})
 
 if __name__ == "__main__":
